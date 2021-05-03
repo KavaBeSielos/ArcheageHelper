@@ -1,0 +1,34 @@
+// global styles and variables
+
+// import google fonts
+@import url('https://fonts.googleapis.com/css2?family=Roboto:400,700|Lato:400,700');
+
+$primary: #BB86FC;
+$primaryVariant: #3700B3;
+$secondary: #03DAC5;
+$bacground: #121212;
+$surface: #121212;
+$error: #CF6679;
+
+$onPrimary: #000000;
+$onBackground: #FFFFFF;
+
+//update bulma wirefram global variables
+$family-sans-serif: "Roboto", sans-serif;
+$link: $primaryVariant;
+
+//update bulma component variables
+
+$control-border-width: 2px;
+$input-border-color: transparent;
+$input-shadow: none;
+
+//set custom global styles for whole app
+
+html{
+    background: linear-gradient(to left bottom, $primary, $primaryVariant);
+}
+
+html, body{
+    height: 100%;
+}
