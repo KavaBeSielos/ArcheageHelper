@@ -3,19 +3,17 @@
 // import google fonts
 @import url('https://fonts.googleapis.com/css2?family=Roboto:400,700|Lato:400,700');
 
-$primary: #BB86FC;
-$primaryVariant: #3700B3;
-$secondary: #03DAC5;
-$bacground: #121212;
-$surface: #121212;
+$purple: #BB86FC;
+$blue: #3700B3;
+$secondaryPurple: #03DAC5;
 $error: #CF6679;
 
-$onPrimary: #000000;
-$onBackground: #FFFFFF;
+$light: #f8f8f8;
 
 //update bulma wirefram global variables
 $family-sans-serif: "Roboto", sans-serif;
-$link: $primaryVariant;
+$primary: $purple;
+$link: $secondaryPurple;
 
 //update bulma component variables
 
@@ -26,7 +24,7 @@ $input-shadow: none;
 //set custom global styles for whole app
 
 html{
-    background: linear-gradient(to left bottom, $primary, $primaryVariant);
+    background: linear-gradient(to left bottom, $purple, $secondaryPurple);
 }
 
 html, body{
