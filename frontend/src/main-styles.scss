@@ -1,7 +1,7 @@
 // global styles and variables
 
 // import google fonts
-@import url('https://fonts.googleapis.com/css2?family=Roboto:400,700|Lato:400,700');
+@import url('https://fonts.googleapis.com/css?family=Roboto:400,700|Lato:400,700');
 
 $purple: #BB86FC;
 $blue: #3700B3;
@@ -46,4 +46,11 @@ html, body{
     background: white;
     border-radius: 5px;
     padding: 35px;
+}
+
+.title {
+    font-family: 'Roboto';
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
 }
