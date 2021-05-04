@@ -1,7 +1,7 @@
 <div class="centered-content">
     <div class="white-box">
 
-        <h1 class="title has-text-grey">Login</h1>
+        <h1 class="title has-text-grey">Sign up</h1>
 
         <div class="field">
             <p class="control has-icons-left has-icons-right">
@@ -21,15 +21,13 @@
           </div>
           <div class="field" style="display: flex; justify-content: flex-end;">
             <p class="control">
-              <button class="button is-success has-background-primary" (click)="onLoginButtonClicked(emailInput.value, passwordInput.value)">
-                Login
+              <button class="button is-success has-background-primary" (click)="onSignupButtonClicked(emailInput.value, passwordInput.value)">
+                Sign up
               </button>
             </p>
           </div>
 
-          <!-- <br> -->
-
           <br>
-          <p class="has-text-grey">To sign up press <a routerLink="/signup">HERE</a></p>
+          <p class="has-text-grey">Already have an account? <a routerLink="/login">Login!</a></p>
     </div>
 </div>

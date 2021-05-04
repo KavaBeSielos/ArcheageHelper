@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 
 // Load in the mongoose models
 const { List, Task, User } = require('./db/models');
+const  jwt  = require('jsonwebtoken');
 
 
 /*  MIDDLEWARE  */
@@ -20,9 +21,35 @@ app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS, PUT, PATCH, DELETE");
      // update to match the domain you will make the request from
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, x-access-token, x-refresh-token, _id");
+
+    // when loging in to get back headers because on default they are hidden
+    res.header(
+        'Access-Control-Expose-Headers',
+        'x-access-token, x-refresh-token'
+    );
+
     next();
   });
+
+//check if the request has a valid JWT access token
+let authenticate = (req,res,next) => {
+    let token = req.header('x-access-token');
+
+    //verify jwt 
+    jwt.verify(token, User.getJWTSecret(), (err, decoded) => {
+        if(err){
+            // there was an error
+            // jwt is invalid so do not authentificate
+            res.status(401).send(err);
+        } else {
+            // jwt is valid
+            req.user_id = decoded._id;
+            next();
+        }
+    })
+}
+
 
 //Verify refresh token middleware (which will be veryfing the session)
 let verifySession = (req, res, next) => {
@@ -81,9 +108,11 @@ let verifySession = (req, res, next) => {
  * GET /lists
  * Purpose: Get all lists
  */
-app.get('/lists', (req, res) => {
-    //we want to return an array of all the lists in db
-    List.find({}).then((lists) => {
+app.get('/lists', authenticate, (req, res) => {
+    //we want to return an array of all the lists in db that belong to user and hes id
+    List.find({
+        _userId: req.user_id
+    }).then((lists) => {
         res.send(lists);
     }).catch((e) => {
         res.send(e);
@@ -95,13 +124,14 @@ app.get('/lists', (req, res) => {
  * POST /lists
  * Purpose: Create a list
  */
-app.post('/lists', (req, res) => {
+app.post('/lists', authenticate, (req, res) => {
     //we want to create a new list and return the new list back to the user ( which includes the id)
     //The list information (fields) will be passed in via the JSON request body
     let title = req.body.title;
 
     let newList = new List({
-        title
+        title,
+        _userId: req.user_id
     });
     newList.save().then((listDoc) => {
         // the full list document is returned (included id)
@@ -114,22 +144,26 @@ app.post('/lists', (req, res) => {
  * PATCH /lists/:id
  * Purpose: Update a specified list
  */
-app.patch('/lists/:id', (req, res) => {
+app.patch('/lists/:id', authenticate, (req, res) => {
     //we want to update the specified list (list document with id in the URL) with the new values specified in the JSON body of the request
-    List.findOneAndUpdate({ _id: req.params.id }, {
+    List.findOneAndUpdate({ _id: req.params.id , _userId: req.user_id}, {
         $set: req.body
     }).then(() => {
-        res.sendStatus(200);
+        res.send({ 'message': 'updated'});
     });
 });
 
-app.delete('/lists/:id', (req, res) => {
+app.delete('/lists/:id', authenticate, (req, res) => {
     //we want to delete the specified list (document with id in the URL)
     List.findOneAndRemove({ 
-        _id: req.params.id 
+        _id: req.params.id,
+        _userId: req.user_id
     }).then((removedListDoc) => {
         res.send(removedListDoc);
-    });
+
+        //delete tasks that are appended to that list
+        deleteTaskFromList(removedListDoc._id);
+    })
 })
 
 
@@ -137,6 +171,7 @@ app.delete('/lists/:id', (req, res) => {
  * GET /lists/:listId/tasks/:taskId
  * Purpose: To get one specific task in a list
  */
+/*
 app.get('/lists/:listId/tasks/:taskId', (req, res) => {
     Task.findOne({
         _id: req.params.taskId,
@@ -145,12 +180,13 @@ app.get('/lists/:listId/tasks/:taskId', (req, res) => {
         res.send(task);
     });
 })
+*/
 
 /**
  * GET /lists/:listId/tasks
  * Purpose: Get all tasks in a specific list
  */
-app.get('/lists/:listId/tasks', (req, res) => {
+app.get('/lists/:listId/tasks', authenticate, (req, res) => {
     //we want to return all tasks that belong to a specific list (specified by listId)
     Task.find({
         _listId: req.params.listId
@@ -163,45 +199,105 @@ app.get('/lists/:listId/tasks', (req, res) => {
  * POST /lists/:listId/tasks
  * Purpose: Create a new task in a specified list
  */
-app.post('/lists/:listId/tasks', (req,res) => {
+app.post('/lists/:listId/tasks', authenticate, (req,res) => {
     // we want to create a new task in a list specified by listId
-    let newTask = new Task({
-        title: req.body.title,
-        _listId: req.params.listId
-    });
-    newTask.save().then((newTaskDoc) => {
-        res.send(newTaskDoc);
+    // we have to check if currently loged in user has acess to the specified list id
+
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) => {
+        if(list){
+        //list object is valid and found for that user
+        // then the currently logged in user can create a new task
+        return true;
+        }
+        // else - the user obj is undefined or incorrect id.
+        return false;
+    }).then((canCreateTask) => {
+        if(canCreateTask) {
+            let newTask = new Task({
+                title: req.body.title,
+                _listId: req.params.listId
+            });
+            newTask.save().then((newTaskDoc) => {
+                res.send(newTaskDoc);
+            })
+        } else {
+            // list id theyr trying to access is not found
+            res.sendStatus(404);
+        }
     })
+
 });
 
 /**
  * PATCH /lists/:listId/tasks/:taskId
  * Purpose: Update an existing task
  */
-app.patch('/lists/:listId/tasks/:taskId', (req, res) => {
+app.patch('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
     // we want to update an existing task ( specified by taskId)
-    Task.findOneAndUpdate({ 
-        _id: req.params.taskId,
-        _listId: req.params.listId
-    },  {
-            $set: req.body
+
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) =>{
+        if(list){
+            //list object is valid and found for that user
+            // then the currently logged in user can update the task
+            return true;
+            }
+            // else - the user obj is undefined or incorrect id.
+            return false;
+    }).then((canUpdateTasks) => {
+        if(canUpdateTasks) {
+            // the current user is auth and can update the tasks
+            Task.findOneAndUpdate({ 
+                _id: req.params.taskId,
+                _listId: req.params.listId
+            },  {
+                    $set: req.body
+                }
+            ).then(() => {
+                res.send({message: "Updated successfully."});
+            })
+        } else {
+            res.sendStatus(404);
         }
-    ).then(() => {
-        res.send({message: "Updated successfully."});
     })
+
 });
 
 /**
  * DELETE /lists/:listId/tasks/:taskId
  * Purpose: Delete a task
  */
-app.delete('/lists/:listId/tasks/:taskId', (req, res) => {
-    Task.findOneAndRemove({
-        _id: req.params.taskId,
-        _listId: req.params.listId
-    }).then((removedTaskDoc) => {
-        res.send(removedTaskDoc);
+app.delete('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
+    //check if user has access to the task
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) =>{
+        if(list){
+            //list object is valid and found for that user
+            // then the currently logged in user can delete the task
+            return true;
+            }
+            // else - the user obj is undefined or incorrect id.
+            return false;
+    }).then((canDeleteTask) => {
+        if(canDeleteTask) {
+            Task.findOneAndRemove({
+                _id: req.params.taskId,
+                _listId: req.params.listId
+            }).then((removedTaskDoc) => {
+                res.send(removedTaskDoc);
+            });
+        } else {
+            res.sendStatus(404);
+        }
     });
+    
 });
 
 /* USER ROUTES */
@@ -279,6 +375,18 @@ app.get('/users/me/access-token', verifySession, (req,res) => {
         res.status(400).send(e);
     });
 })
+
+
+
+/* HELPER METHODS */
+let deleteTaskFromList = (_listId) => {
+    Task.deleteMany({
+        _listId
+    }).then(() => {
+        console.log("Tasks from " + _listId + " were deleted!");
+    });
+
+}
 
 app.listen (3000, () => {
     console.log("Server is listening on port 3000")

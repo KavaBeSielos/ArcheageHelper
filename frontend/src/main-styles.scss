@@ -13,7 +13,7 @@ $light: #f8f8f8;
 //update bulma wirefram global variables
 $family-sans-serif: "Roboto", sans-serif;
 $primary: $purple;
-$link: $secondaryPurple;
+$link: $purple;
 
 //update bulma component variables
 
@@ -53,4 +53,10 @@ html, body{
     font-size: 24px;
     text-transform: uppercase;
     letter-spacing: 2px;
+}
+
+.white-box {
+    padding: 35px;
+    background: white;
+    border-radius: 5px;
 }
