@@ -33,9 +33,9 @@ const UserSchema = new mongoose.Schema({
 })
 
 // *** Instance methods ***
-UserSchema.methods.toJson = function() {
+UserSchema.methods.toJSON = function() {
     const user = this;
-    const userObject = user.userObject();
+    const userObject = user.toObject();
 
     //return the document except the password and session as they should not be public
     return _.omit(userObject, ['password', 'sessions']);
@@ -92,7 +92,7 @@ UserSchema.statics.findByIdAndToken = function(_id, token) {
 
     return User.findOne({
         _id,
-        'session.token': token
+        'sessions.token': token
     });
 }
 
@@ -103,8 +103,9 @@ UserSchema.statics.findByCredentials = function(email, password) {
 
         return new Promise((resolve, reject) => {
             bcrypt.compare(password, user.password, (err, res) => {
-                if (res) resolve(user);
-                else{
+                if (res) {
+                    resolve(user);
+                }else{
                     reject();
                 }
             })
