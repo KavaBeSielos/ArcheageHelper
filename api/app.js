@@ -12,6 +12,15 @@ const { List, Task } = require('./db/models');
 // dont use json() without () IT WILL BREAK THE WHOLE PROGRAM :)
 app.use(bodyParser.json());
 
+// CORS HEADER MIDDLEWARE
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS, PUT, PATCH, DELETE");
+     // update to match the domain you will make the request from
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+  });
+
 /* ROUTE HANDLERS */
 
 
@@ -127,7 +136,7 @@ app.patch('/lists/:listId/tasks/:taskId', (req, res) => {
             $set: req.body
         }
     ).then(() => {
-        res.sendStatus(200);
+        res.send({message: "Updated successfully."});
     })
 });
 
