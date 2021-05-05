@@ -24,6 +24,10 @@ export class TaskService {
     return this.webReqService.patch(`lists/${listId}/tasks/${taskId}`, { title });
   }
 
+  getDailys() {
+    return this.webReqService.get('dailys');
+  }
+
   getLists() {
     return this.webReqService.get('lists');
   }
@@ -34,6 +38,10 @@ export class TaskService {
 
   getTasks(listId: string) {
     return this.webReqService.get(`lists/${listId}/tasks`);
+  }
+
+  getDailyTasks(dailyId: string) {
+    return this.webReqService.get(`dailys/${dailyId}/tasks`);
   }
 
   deleteTask(listId: string, taskId: string) {
@@ -48,6 +56,15 @@ export class TaskService {
   complete(task: Task) {
     return this.webReqService.patch(`lists/${task._listId}/tasks/${task._id}`, {
       completed: !task.completed
-    });
+    })
   }
+
+  completeDaily(task: Task) {
+    return this.webReqService.patch(`dailys/${task._listId}/tasks/${task._id}`, {
+      completed: !task.completed
+    })
+  }
+  
+
+  
 }

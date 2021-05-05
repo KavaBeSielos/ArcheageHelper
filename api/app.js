@@ -6,7 +6,7 @@ const { mongoose } = require('./db/mongoose');
 const bodyParser = require('body-parser');
 
 // Load in the mongoose models
-const { List, Task, User } = require('./db/models');
+const { List, Task, User, Daily } = require('./db/models');
 const  jwt  = require('jsonwebtoken');
 
 
@@ -119,6 +119,21 @@ app.get('/lists', authenticate, (req, res) => {
     });
 });
 
+/**
+ * GET /dailys
+ * Purpose: Get global dailys for
+ * all users
+ */
+
+app.get('/dailys', (req, res) => {
+    //we want to return an array of all the lists in db that belong to all users
+    Daily.find({}).then((dailys) => {
+        res.send(dailys);
+    }).catch((e) => {
+        res.send(e);
+    });
+});
+
 
 /**
  * POST /lists
@@ -139,6 +154,24 @@ app.post('/lists', authenticate, (req, res) => {
     })
 });
 
+/**
+ * POST /dailys
+ * Purpose: Create a daily list for all users
+ */
+ app.post('/dailys', (req, res) => {
+    //we want to create a new list and return the new list back to the user ( which includes the id)
+    //The list information (fields) will be passed in via the JSON request body
+    let title = req.body.title;
+
+    let newDaily = new Daily({
+        title,
+    });
+    newDaily.save().then((dailyDoc) => {
+        // the full list document is returned (included id)
+        res.send(dailyDoc);
+    })
+});
+
 
 /**
  * PATCH /lists/:id
@@ -153,6 +186,24 @@ app.patch('/lists/:id', authenticate, (req, res) => {
     });
 });
 
+/**
+ * PATCH /dailys/:id
+ * Purpose: Update a specified daily list
+ */
+ app.patch('/dailys/:id', (req, res) => {
+    //we want to update the specified list (list document with id in the URL) with the new values specified in the JSON body of the request
+    List.findOneAndUpdate({ _id: req.params.id}, {
+        $set: req.body
+    }).then(() => {
+        res.send({ 'message': 'updated'});
+    });
+});
+
+/**
+ * DELETE /lists/:id
+ * Purpose: delete a specific list by id
+ */
+
 app.delete('/lists/:id', authenticate, (req, res) => {
     //we want to delete the specified list (document with id in the URL)
     List.findOneAndRemove({ 
@@ -163,6 +214,23 @@ app.delete('/lists/:id', authenticate, (req, res) => {
 
         //delete tasks that are appended to that list
         deleteTaskFromList(removedListDoc._id);
+    })
+})
+
+/**
+ * DELETE /dailys/:id
+ * Purpose: delete a specific global daily list by id
+ */
+
+ app.delete('/daily/:id', (req, res) => {
+    //we want to delete the specified daily list (document with id in the URL)
+    List.findOneAndRemove({ 
+        _id: req.params.id,
+    }).then((removedDailyDoc) => {
+        res.send(removedDailyDoc);
+
+        //delete tasks that are appended to that list
+        deleteTaskFromList(removedDailyDoc._id);
     })
 })
 
@@ -196,6 +264,19 @@ app.get('/lists/:listId/tasks', authenticate, (req, res) => {
 });
 
 /**
+ * GET /dailys/:dailyId/tasks
+ * Purpose: Get all tasks in a specific global daily list
+ */
+ app.get('/dailys/:dailyId/tasks', (req, res) => {
+    //we want to return all tasks that belong to a specific list (specified by listId)
+    Task.find({
+        _listId: req.params.dailyId
+    }).then((tasks) => {
+        res.send(tasks);
+    });
+});
+
+/**
  * POST /lists/:listId/tasks
  * Purpose: Create a new task in a specified list
  */
@@ -219,6 +300,41 @@ app.post('/lists/:listId/tasks', authenticate, (req,res) => {
             let newTask = new Task({
                 title: req.body.title,
                 _listId: req.params.listId
+            });
+            newTask.save().then((newTaskDoc) => {
+                res.send(newTaskDoc);
+            })
+        } else {
+            // list id theyr trying to access is not found
+            res.sendStatus(404);
+        }
+    })
+
+});
+
+/**
+ * POST /dailys/:dailyId/tasks
+ * Purpose: Create a new task in a specified list
+ */
+ app.post('/dailys/:dailyId/tasks', (req,res) => {
+    // we want to create a new task in a list specified by listId
+    // we have to check if currently loged in user has acess to the specified list id
+
+    Daily.findOne({
+        _id: req.params.dailyId,
+    }).then((daily) => {
+        if(daily){
+        //list object is valid and found for that user
+        // then the currently logged in user can create a new task
+        return true;
+        }
+        // else - the user obj is undefined or incorrect id.
+        return false;
+    }).then((canCreateTask) => {
+        if(canCreateTask) {
+            let newTask = new Task({
+                title: req.body.title,
+                _listId: req.params.dailyId
             });
             newTask.save().then((newTaskDoc) => {
                 res.send(newTaskDoc);
@@ -269,6 +385,42 @@ app.patch('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
 });
 
 /**
+ * PATCH /dailys/:dailyId/tasks/:taskId
+ * Purpose: Update an existing task
+ */
+ app.patch('/dailys/:dailyId/tasks/:taskId', (req, res) => {
+    // we want to update an existing task ( specified by taskId)
+
+    Daily.findOne({
+        _id: req.params.dailyId,
+    }).then((daily) =>{
+        if(daily){
+            //list object is valid and found for that user
+            // then the currently logged in user can update the task
+            return true;
+            }
+            // else - the user obj is undefined or incorrect id.
+            return false;
+    }).then((canUpdateTasks) => {
+        if(canUpdateTasks) {
+            // the current user is auth and can update the tasks
+            Task.findOneAndUpdate({ 
+                _id: req.params.taskId,
+                _listId: req.params.dailyId
+            },  {
+                    $set: req.body
+                }
+            ).then(() => {
+                res.send({message: "Updated successfully."});
+            })
+        } else {
+            res.sendStatus(404);
+        }
+    })
+
+});
+
+/**
  * DELETE /lists/:listId/tasks/:taskId
  * Purpose: Delete a task
  */
@@ -290,6 +442,37 @@ app.delete('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
             Task.findOneAndRemove({
                 _id: req.params.taskId,
                 _listId: req.params.listId
+            }).then((removedTaskDoc) => {
+                res.send(removedTaskDoc);
+            });
+        } else {
+            res.sendStatus(404);
+        }
+    });
+    
+});
+
+/**
+ * DELETE /dailys/:dailyId/tasks/:taskId
+ * Purpose: Delete a task
+ */
+ app.delete('/dailys/:dailyId/tasks/:taskId', (req, res) => {
+    //check if user has access to the task
+    Daily.findOne({
+        _id: req.params.dailyId,
+    }).then((daily) =>{
+        if(daily){
+            //list object is valid and found for that user
+            // then the currently logged in user can delete the task
+            return true;
+            }
+            // else - the user obj is undefined or incorrect id.
+            return false;
+    }).then((canDeleteTask) => {
+        if(canDeleteTask) {
+            Task.findOneAndRemove({
+                _id: req.params.taskId,
+                _listId: req.params.dailyId
             }).then((removedTaskDoc) => {
                 res.send(removedTaskDoc);
             });

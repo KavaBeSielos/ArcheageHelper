@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Params, Router } from '@angular/router';
+import { Daily } from 'src/app/models/daily.model';
 import { List } from 'src/app/models/list.mode';
 import { Task } from 'src/app/models/task.model';
 import { TaskService } from 'src/app/task.service';
@@ -13,14 +14,21 @@ export class TaskViewComponent implements OnInit {
 
   lists: List[];
   tasks: Task[];
+  dailys: Daily[];
   selectedListId: string;
+  selectedDailyId: string;
 
   constructor(private taskService: TaskService, private route: ActivatedRoute, private router: Router) { }
 
   ngOnInit(): void {
     this.route.params.subscribe(
       (params: Params) => {
-        if (params.listId) {
+        if (params.dailyId){
+          this.selectedDailyId = params.dailyId;
+          this.taskService.getDailyTasks(params.dailyId).subscribe((tasks: Task[]) => {
+            this.tasks = tasks;
+          })
+        } else if (params.listId) {
           this.selectedListId = params.listId;
           this.taskService.getTasks(params.listId).subscribe((tasks: Task[]) => {
             this.tasks = tasks;
@@ -30,6 +38,10 @@ export class TaskViewComponent implements OnInit {
         }
       }
     )
+
+    this.taskService.getDailys().subscribe((dailys: Daily[]) => {
+      this.dailys = dailys;
+    })
 
     this.taskService.getLists().subscribe((lists: List[]) => {
       this.lists = lists;
@@ -44,8 +56,16 @@ export class TaskViewComponent implements OnInit {
       // The task has been set to completed!
       console.log("Completed Successfully!")
       task.completed = !task.completed;
-      
     })
+  }
+
+  onTaskClickD(task: Task) {
+        // we want to complete daily task when its clicked
+        this.taskService.completeDaily(task).subscribe(() => {
+          // The task has been set to completed!
+          console.log("Completed Successfully!")
+          task.completed = !task.completed;
+        })
   }
 
   onClickDeleteList() {

@@ -13,6 +13,8 @@ const routes: Routes = [
   { path: 'new-list', component: NewListComponent},
   { path: 'edit-list/:listId', component: EditListComponent},
   { path: 'lists', component: TaskViewComponent},
+  { path: 'dailys', component: TaskViewComponent},
+  { path: 'dailys/:dailyId', component: TaskViewComponent},
   { path: 'lists/:listId', component: TaskViewComponent},
   { path: 'lists/:listId/new-task', component: NewTaskComponent},
   { path: 'lists/:listId/edit-task/:taskId', component: EditTaskComponent},
